@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>進め！ AI ペンギン</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700&display=swap');
+
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f4f8;
+            font-family: 'M PLUS Rounded 1c', sans-serif;
+            color: #333;
+            text-align: center;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 40px 30px;
+            border-radius: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 90%;
+            width: 500px;
+            box-sizing: border-box;
+            border: 4px solid #b3d9ff;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: #0066cc;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        p {
+            font-size: 1rem;
+            color: #666;
+            margin-top: 0;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .btn {
+            background-color: #ff8c42;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 5px #e07b3b;
+            user-select: none;
+        }
+
+        .btn:hover {
+            background-color: #ff7826;
+        }
+
+        .btn:active {
+            box-shadow: 0 2px #e07b3b;
+            transform: translateY(3px);
+        }
+
+        .btn-start {
+            background-color: #4CAF50;
+            box-shadow: 0 5px #388e3c;
+            padding: 15px 40px;
+        }
+
+        .btn-start:hover {
+            background-color: #45a049;
+        }
+
+        .btn-start:active {
+            box-shadow: 0 2px #388e3c;
+            transform: translateY(3px);
+        }
+        
+        .btn-left {
+            background-color: #8A2BE2;
+            box-shadow: 0 5px #6A1EB4;
+        }
+        
+        .btn-left:hover {
+            background-color: #7A2BD4;
+        }
+        
+        .btn-left:active {
+            box-shadow: 0 2px #6A1EB4;
+        }
+
+        .btn-right {
+            background-color: #00BFFF;
+            box-shadow: 0 5px #009ACD;
+        }
+
+        .btn-right:hover {
+            background-color: #00AFFF;
+        }
+
+        .btn-right:active {
+            box-shadow: 0 2px #009ACD;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 200px;
+            background-color: #e6f3ff;
+            border-radius: 15px;
+            margin-top: 20px;
+            border: 2px solid #b3d9ff;
+        }
+        
+        .score-display {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .score-item {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 1.5rem;
+            display: none;
+            z-index: 1000;
+        }
+        
+        .message-box h3 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .message-box p {
+            margin: 10px 0 0;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>進め！ AI ペンギン</h1>
+        <p>
+            キーボードの **'Shift'** キーを押すか、**「ゲームスタート」**ボタンで開始！<br>
+            **「上」** と **「下」** ボタンで障害物をよけよう！
+        </p>
+
+        <div class="score-display">
+            <div class="score-item">
+                スコア: <span id="scoreDisplay">0</span>
+            </div>
+            <div class="score-item">
+                ライフ: <span id="lifeDisplay">3</span> ❤️
+            </div>
+            <div class="score-item">
+                タイム: <span id="timerDisplay">30.00</span> 秒
+            </div>
+        </div>
+
+        <canvas id="gameCanvas"></canvas>
+
+        <div class="controls">
+            <button class="btn btn-left" id="btnUp">上</button>
+            <button class="btn btn-right" id="btnDown">下</button>
+        </div>
+        <div class="controls" style="margin-top: 15px;">
+             <button class="btn btn-start" id="btnStart">ゲームスタート</button>
+        </div>
+
+    </div>
+
+    <div class="message-box" id="messageBox">
+        <h3 id="messageTitle"></h3>
+        <p id="messageText"></p>
+    </div>
+
+    <script>
+        // ゲームの基本設定
+        const GAME_DURATION = 30; // ゲーム時間 (秒)
+        const INITIAL_GAME_SPEED = 3; // ゲームの初期速度
+        const SPEED_INCREASE_RATE = 0.5; // スピードの増加量
+        const SPEED_INCREASE_INTERVAL = 5; // 何点ごとにスピードを上げるか
+        const LANE_HEIGHT = 40; // レーンの高さ
+        const PENGUIN_SIZE = 50;
+        const MAX_LIVES = 3;
+        const INVINCIBILITY_DURATION = 5000; // 無敵時間 (ミリ秒)
+
+        // HTML要素の取得
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const lifeDisplay = document.getElementById('lifeDisplay');
+        const btnUp = document.getElementById('btnUp');
+        const btnDown = document.getElementById('btnDown');
+        const btnStart = document.getElementById('btnStart');
+        const messageBox = document.getElementById('messageBox');
+        const messageTitle = document.getElementById('messageTitle');
+        const messageText = document.getElementById('messageText');
+
+        // ゲームの状態変数
+        let isGameActive = false;
+        let score = 0;
+        let lives = MAX_LIVES;
+        let startTime = 0;
+        let animationFrameId = null;
+        let currentGameSpeed = INITIAL_GAME_SPEED;
+        let lastSpeedIncreaseScore = 0;
+        let isInvincible = false;
+        let invincibilityStartTime = 0;
+
+        // ペンギンの位置情報
+        const lanes = [canvas.height / 2 - LANE_HEIGHT, canvas.height / 2 + LANE_HEIGHT];
+        let currentLaneIndex = 0;
+        let penguinY = lanes[currentLaneIndex];
+        const penguinX = 50;
+
+        // アイテムの配列
+        let obstacles = [];
+        let scoreItems = [];
+        let invincibilityPotions = [];
+        let heartItems = [];
+        let isColliding = false;
+
+        // ペンギンを描画
+        function drawPenguin() {
+            ctx.font = PENGUIN_SIZE + 'px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const penguinEmoji = isInvincible ? '🥷' : '🐧';
+            ctx.fillText(penguinEmoji, penguinX, penguinY);
+        }
+
+        // 障害物を描画
+        function drawObstacles() {
+            obstacles.forEach(obstacle => {
+                ctx.font = '40px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🧊', obstacle.x, obstacle.y);
+            });
+        }
+        
+        // スコアアイテムを描画
+        function drawScoreItems() {
+            scoreItems.forEach(item => {
+                ctx.font = '30px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⭐', item.x, item.y);
+            });
+        }
+
+        // 無敵ポーションを描画
+        function drawInvincibilityPotions() {
+            invincibilityPotions.forEach(potion => {
+                ctx.font = '30px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🧪', potion.x, potion.y);
+            });
+        }
+
+        // ハートアイテムを描画
+        function drawHeartItems() {
+            heartItems.forEach(heart => {
+                ctx.font = '30px serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('❤️', heart.x, heart.y);
+            });
+        }
+
+        // 障害物を生成
+        function generateObstacle() {
+            const lane = Math.floor(Math.random() * lanes.length);
+            obstacles.push({
+                x: canvas.width,
+                y: lanes[lane],
+                width: 40,
+                height: 40,
+                passed: false
+            });
+        }
+        
+        // スコアアイテムを生成
+        function generateScoreItem() {
+            const lane = Math.floor(Math.random() * lanes.length);
+            scoreItems.push({
+                x: canvas.width,
+                y: lanes[lane],
+                width: 30,
+                height: 30,
+                collected: false
+            });
+        }
+
+        // 無敵ポーションを生成
+        function generateInvincibilityPotion() {
+            const lane = Math.floor(Math.random() * lanes.length);
+            invincibilityPotions.push({
+                x: canvas.width,
+                y: lanes[lane],
+                width: 30,
+                height: 30,
+                collected: false
+            });
+        }
+
+        // ハートアイテムを生成
+        function generateHeartItem() {
+            const lane = Math.floor(Math.random() * lanes.length);
+            heartItems.push({
+                x: canvas.width,
+                y: lanes[lane],
+                width: 30,
+                height: 30,
+                collected: false
+            });
+        }
+        
+        // 描画を更新
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // キャンバスをクリア
+            
+            // 地面を描画
+            ctx.fillStyle = '#b3d9ff';
+            ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2);
+            
+            drawPenguin();
+            drawObstacles();
+            drawScoreItems();
+            drawInvincibilityPotions();
+            drawHeartItems();
+        }
+
+        // ゲームロジックの更新
+        function update() {
+            if (!isGameActive) return;
+
+            // 無敵時間の終了判定
+            if (isInvincible && Date.now() - invincibilityStartTime > INVINCIBILITY_DURATION) {
+                isInvincible = false;
+                showMessageBox('無敵終了！', '気を付けてね！');
+            }
+
+            // スピードの増加判定
+            if (score > lastSpeedIncreaseScore + SPEED_INCREASE_INTERVAL) {
+                currentGameSpeed += SPEED_INCREASE_RATE;
+                lastSpeedIncreaseScore = score;
+                showMessageBox('スピードアップ！', '難易度が上がったよ！');
+            }
+
+            // アイテムと障害物の位置を更新
+            obstacles.forEach(obstacle => obstacle.x -= currentGameSpeed);
+            scoreItems.forEach(item => item.x -= currentGameSpeed);
+            invincibilityPotions.forEach(potion => potion.x -= currentGameSpeed);
+            heartItems.forEach(heart => heart.x -= currentGameSpeed);
+
+            // 衝突判定（障害物）
+            obstacles.forEach(obstacle => {
+                if (!isColliding && !isInvincible && penguinX < obstacle.x + obstacle.width &&
+                    penguinX + PENGUIN_SIZE > obstacle.x &&
+                    penguinY - PENGUIN_SIZE / 2 < obstacle.y &&
+                    penguinY + PENGUIN_SIZE / 2 > obstacle.y) {
+                    
+                    lives--;
+                    lifeDisplay.textContent = lives;
+                    isColliding = true;
+                    showMessageBox('しまった！', '氷にぶつかった！');
+                    setTimeout(() => isColliding = false, 1000);
+                    obstacles = obstacles.filter(o => o !== obstacle); // ぶつかった障害物を削除
+                }
+            });
+
+            // 衝突判定（スコアアイテム）
+            scoreItems.forEach(item => {
+                if (penguinX < item.x + item.width &&
+                    penguinX + PENGUIN_SIZE > item.x &&
+                    penguinY - PENGUIN_SIZE / 2 < item.y &&
+                    penguinY + PENGUIN_SIZE / 2 > item.y && !item.collected) {
+                    
+                    score += 5;
+                    scoreDisplay.textContent = score;
+                    item.collected = true;
+                    scoreItems = scoreItems.filter(o => o !== item); // 取得したアイテムを削除
+                }
+            });
+
+            // 衝突判定（無敵ポーション）
+            invincibilityPotions.forEach(potion => {
+                if (penguinX < potion.x + potion.width &&
+                    penguinX + PENGUIN_SIZE > potion.x &&
+                    penguinY - PENGUIN_SIZE / 2 < potion.y &&
+                    penguinY + PENGUIN_SIZE / 2 > potion.y && !potion.collected) {
+                    
+                    isInvincible = true;
+                    invincibilityStartTime = Date.now();
+                    showMessageBox('無敵！', '無敵ペンギンに変身！');
+                    potion.collected = true;
+                    invincibilityPotions = invincibilityPotions.filter(o => o !== potion);
+                }
+            });
+            
+            // 衝突判定（ハートアイテム）
+            heartItems.forEach(heart => {
+                if (penguinX < heart.x + heart.width &&
+                    penguinX + PENGUIN_SIZE > heart.x &&
+                    penguinY - PENGUIN_SIZE / 2 < heart.y &&
+                    penguinY + PENGUIN_SIZE / 2 > heart.y && !heart.collected) {
+                    
+                    if (lives < MAX_LIVES) {
+                        lives++;
+                        lifeDisplay.textContent = lives;
+                        showMessageBox('ライフ回復！', 'ハートを取ったよ！');
+                    }
+                    heart.collected = true;
+                    heartItems = heartItems.filter(o => o !== heart);
+                }
+            });
+
+
+            // 画面外に出たアイテムと障害物を削除
+            obstacles = obstacles.filter(obstacle => obstacle.x > -obstacle.width);
+            scoreItems = scoreItems.filter(item => item.x > -item.width);
+            invincibilityPotions = invincibilityPotions.filter(potion => potion.x > -potion.width);
+            heartItems = heartItems.filter(heart => heart.x > -heart.width);
+
+            // 障害物、スコアアイテム、無敵ポーション、ハートをランダムなタイミングで生成
+            if (Math.random() < 0.02 * (currentGameSpeed / INITIAL_GAME_SPEED)) {
+                generateObstacle();
+            }
+            if (Math.random() < 0.005) {
+                generateScoreItem();
+            }
+            if (Math.random() < 0.001) {
+                generateInvincibilityPotion();
+            }
+            if (Math.random() < 0.001) {
+                generateHeartItem();
+            }
+
+            // タイマーを更新
+            const elapsedTime = (Date.now() - startTime) / 1000;
+            const remainingTime = Math.max(0, GAME_DURATION - elapsedTime);
+            timerDisplay.textContent = remainingTime.toFixed(2);
+
+            if (remainingTime <= 0 || lives <= 0) {
+                isGameActive = false;
+                showMessageBox('ゲーム終了！', `最終スコア: ${score}`);
+                btnStart.disabled = false;
+                btnUp.disabled = true;
+                btnDown.disabled = true;
+                cancelAnimationFrame(animationFrameId);
+                return;
+            }
+
+            draw(); // 再描画
+            animationFrameId = requestAnimationFrame(update);
+        }
+
+        // ペンギンの位置を上下に動かす
+        function movePenguin(direction) {
+            if (!isGameActive || isColliding) return;
+
+            if (direction === 'up' && currentLaneIndex > 0) {
+                currentLaneIndex--;
+            } else if (direction === 'down' && currentLaneIndex < lanes.length - 1) {
+                currentLaneIndex++;
+            }
+            penguinY = lanes[currentLaneIndex];
+        }
+        
+        // キーボード入力
+        document.addEventListener('keydown', (e) => {
+            // Shiftキーでゲームを開始
+            if (e.key === 'Shift') {
+                startGame();
+            }
+            
+            // AキーとBキーで入力
+            if (e.key === 'a' || e.key === 'A') {
+                movePenguin('up');
+                btnUp.classList.add('btn-active');
+            } else if (e.key === 'b' || e.key === 'B') {
+                movePenguin('down');
+                btnDown.classList.add('btn-active');
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'a' || e.key === 'A') {
+                btnUp.classList.remove('btn-active');
+            } else if (e.key === 'b' || e.key === 'B') {
+                btnDown.classList.remove('btn-active');
+            }
+        });
+
+        // ボタン入力
+        btnUp.addEventListener('click', () => movePenguin('up'));
+        btnDown.addEventListener('click', () => movePenguin('down'));
+        btnStart.addEventListener('click', startGame);
+
+        // メッセージボックスを表示
+        function showMessageBox(title, text) {
+            messageTitle.textContent = title;
+            messageText.textContent = text;
+            messageBox.style.display = 'block';
+            setTimeout(() => {
+                messageBox.style.display = 'none';
+            }, 3000);
+        }
+
+        // ゲームを初期化して開始
+        function startGame() {
+            if (isGameActive) return;
+
+            // ゲーム開始中はボタンを無効化
+            btnStart.disabled = true;
+            btnUp.disabled = true;
+            btnDown.disabled = true;
+
+            // カウントダウン
+            showMessageBox('準備はいい？', '3');
+            setTimeout(() => {
+                showMessageBox('準備はいい？', '2');
+            }, 1000);
+            setTimeout(() => {
+                showMessageBox('準備はいい？', '1');
+            }, 2000);
+            setTimeout(() => {
+                // カウントダウン後にゲームを開始
+                showMessageBox('ゲームスタート！', '頑張ってね！');
+                isGameActive = true;
+                score = 0;
+                lives = MAX_LIVES;
+                scoreItems = [];
+                isColliding = false;
+                invincibilityPotions = [];
+                heartItems = [];
+                isInvincible = false;
+                invincibilityStartTime = 0;
+                startTime = Date.now();
+                currentLaneIndex = 0;
+                penguinY = lanes[currentLaneIndex];
+                obstacles = [];
+                currentGameSpeed = INITIAL_GAME_SPEED; // ゲームスピードを初期値に戻す
+                lastSpeedIncreaseScore = 0;
+                
+                // ゲーム開始後にボタンを有効化
+                btnUp.disabled = false;
+                btnDown.disabled = false;
+                
+                // 初期描画
+                draw();
+                
+                // ゲームループを開始
+                animationFrameId = requestAnimationFrame(update);
+            }, 3000);
+        }
+        
+        // ウィンドウのロード時にゲームを初期化
+        window.onload = function() {
+            draw(); // 初期描画
+            showMessageBox('ゲーム説明', '「ゲームスタート」ボタンを押すか、キーボードの「Shift」キーを押してゲームを始めよう！');
+            btnUp.disabled = true;
+            btnDown.disabled = true;
+        };
+    </script>
+</body>
+</html>
